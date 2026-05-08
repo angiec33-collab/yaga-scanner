@@ -1,2 +1,2 @@
-# yaga-scanner
+# yoya-scanner
 Good Vibes Reset
