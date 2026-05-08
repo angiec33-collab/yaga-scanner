@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Scanner — Evento de Yoga Unicrese Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #13161d;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --text: #e8eaf2;
+    --muted: #6b7280;
+    --accent: #7c6ef5;
+    --green: #22c55e;
+    --green-bg: #052e16;
+    --green-border: #166534;
+    --red: #ef4444;
+    --red-bg: #2d0a0a;
+    --red-border: #7f1d1d;
+    --amber: #f59e0b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 20px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .header-left h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .header-left p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .counter {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* SCANNER SECTION */
+  .scanner-wrap {
+    padding: 20px;
+  }
+
+  .scanner-box {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .scanner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .scanner-frame {
+    width: 65%;
+    aspect-ratio: 1;
+    position: relative;
+  }
+
+  .scanner-frame::before,
+  .scanner-frame::after,
+  .scanner-frame > span::before,
+  .scanner-frame > span::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .scanner-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scanner-frame::after  { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .scanner-frame > span::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .scanner-frame > span::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+    border-radius: 2px;
+  }
+  @keyframes scanLine {
+    0%   { top: 10%; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 90%; opacity: 0; }
+  }
+
+  .scanner-status {
+    position: absolute;
+    bottom: 16px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+
+  .btn-scan {
+    display: block;
+    width: 100%;
+    max-width: 380px;
+    margin: 16px auto 0;
+    padding: 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.2px;
+  }
+  .btn-scan:hover { background: #6558e0; }
+  .btn-scan:active { transform: scale(0.98); }
+  .btn-scan.scanning { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* RESULT CARD */
+  .result-wrap {
+    padding: 0 20px 20px;
+    display: none;
+  }
+  .result-wrap.visible { display: block; }
+
+  .result-card {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card.valid {
+    border-color: var(--green-border);
+  }
+  .result-card.invalid {
+    border-color: var(--red-border);
+  }
+  .result-card.used {
+    border-color: #92400e;
+  }
+
+  .result-header {
+    padding: 24px 24px 20px;
+    text-align: center;
+  }
+  .result-card.valid   .result-header { background: var(--green-bg); }
+  .result-card.invalid .result-header { background: var(--red-bg); }
+  .result-card.used    .result-header { background: #1c1208; }
+
+  .result-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .result-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .result-card.valid   .result-title { color: var(--green); }
+  .result-card.invalid .result-title { color: var(--red); }
+  .result-card.used    .result-title { color: var(--amber); }
+
+  .result-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .result-body {
+    background: var(--surface);
+    padding: 20px 24px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 500;
+  }
+  .info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+    max-width: 60%;
+  }
+  .info-value.mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .btn-next {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: all 0.2s;
+    letter-spacing: -0.2px;
+  }
+  .btn-next:hover { background: var(--border); }
+  .btn-next:active { transform: scale(0.98); }
+
+  /* HISTORY */
+  .history-wrap {
+    padding: 0 20px 100px;
+  }
+  .history-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .history-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .history-dot.valid   { background: var(--green); }
+  .history-dot.invalid { background: var(--red); }
+  .history-dot.used    { background: var(--amber); }
+  .history-info { flex: 1; min-width: 0; }
+  .history-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .history-time {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .empty-history {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* CANVAS hidden */
+  #canvas { display: none; }
+
+  /* Vibration feedback overlay */
+  .flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 999;
+    transition: opacity 0.1s;
+  }
+  .flash.green { background: rgba(34,197,94,0.15); }
+  .flash.red   { background: rgba(239,68,68,0.15); }
+  .flash.show  { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+
+<div class="header">
+  <div class="header-left">
+    <h1>🧘 Scanner de Entrada</h1>
+    <p>Evento de Yoga · Unicrese Pro 2026</p>
+  </div>
+  <div class="counter" id="counter">0 escaneados</div>
+</div>
+
+<div class="scanner-wrap">
+  <div class="scanner-box" id="scannerBox">
+    <video id="video" playsinline autoplay muted></video>
+    <canvas id="canvas"></canvas>
+    <div class="scanner-overlay">
+      <div class="scanner-frame">
+        <span></span>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div class="scanner-status" id="scannerStatus">Presiona "Iniciar cámara"</div>
+  </div>
+  <button class="btn-scan" id="btnScan" onclick="toggleScan()">📷 Iniciar cámara</button>
+</div>
+
+<div class="result-wrap" id="resultWrap">
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <span class="result-icon" id="resultIcon"></span>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-sub" id="resultSub"></div>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+  </div>
+  <button class="btn-next" onclick="nextScan()">↩ Escanear siguiente</button>
+</div>
+
+<div class="history-wrap">
+  <div class="history-title">Historial de entrada</div>
+  <div id="historyList"><div class="empty-history">Aún no hay escaneos registrados</div></div>
+</div>
+
+<script>
+  let scanning = false;
+  let stream = null;
+  let animFrame = null;
+  let scanned = new Set();
+  let history = [];
+  let totalCount = 0;
+  let lastScan = 0;
+
+  const video    = document.getElementById('video');
+  const canvas   = document.getElementById('canvas');
+  const ctx      = canvas.getContext('2d');
+  const btnScan  = document.getElementById('btnScan');
+  const status   = document.getElementById('scannerStatus');
+  const resultW  = document.getElementById('resultWrap');
+  const resultC  = document.getElementById('resultCard');
+  const flash    = document.getElementById('flash');
+
+  async function toggleScan() {
+    if (scanning) {
+      stopScan();
+    } else {
+      await startScan();
+    }
+  }
+
+  async function startScan() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } }
+      });
+      video.srcObject = stream;
+      await video.play();
+      scanning = true;
+      btnScan.textContent = '⏹ Detener cámara';
+      btnScan.classList.add('scanning');
+      status.textContent = 'Apunta al código QR del tiquete';
+      resultW.classList.remove('visible');
+      tick();
+    } catch(err) {
+      status.textContent = 'Error: ' + err.message;
+      alert('No se pudo acceder a la cámara. Verifica los permisos en tu navegador.');
+    }
+  }
+
+  function stopScan() {
+    scanning = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    btnScan.textContent = '📷 Iniciar cámara';
+    btnScan.classList.remove('scanning');
+    status.textContent = 'Cámara detenida';
+  }
+
+  function tick() {
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if (code && Date.now() - lastScan > 2000) {
+        lastScan = Date.now();
+        processQR(code.data);
+        return;
+      }
+    }
+    animFrame = requestAnimationFrame(tick);
+  }
+
+  function processQR(data) {
+    stopScan();
+    let parsed = null;
+
+    try {
+      parsed = JSON.parse(data);
+    } catch(e) {
+      // Intentar formato YOGA2026-ID-Nombre-UnicresePro
+      if (data.startsWith('YOGA2026-')) {
+        const parts = data.split('-');
+        parsed = {
+          id: parts[1] || 'N/A',
+          nombre: parts.slice(2, -1).join(' ') || 'N/A',
+          correo: '',
+          evento: 'Yoga Unicrese Pro 2026',
+          valid: true
+        };
+      }
+    }
+
+    if (!parsed || !parsed.valid) {
+      showResult('invalid', parsed);
+      return;
+    }
+
+    const ticketId = parsed.id || data;
+    const alreadyUsed = scanned.has(ticketId);
+
+    if (alreadyUsed) {
+      showResult('used', parsed);
+    } else {
+      scanned.add(ticketId);
+      totalCount++;
+      showResult('valid', parsed);
+    }
+
+    addHistory(parsed, alreadyUsed ? 'used' : (parsed.valid ? 'valid' : 'invalid'));
+    updateCounter();
+  }
+
+  function showResult(type, data) {
+    resultW.classList.add('visible');
+    resultC.className = 'result-card ' + type;
+    resultW.scrollIntoView({ behavior: 'smooth' });
+
+    const icon  = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const sub   = document.getElementById('resultSub');
+    const body  = document.getElementById('resultBody');
+
+    if (type === 'valid') {
+      icon.textContent  = '✅';
+      title.textContent = '¡Entrada válida!';
+      sub.textContent   = 'Tiquete verificado correctamente';
+      flashScreen('green');
+      vibrate([100, 50, 100]);
+    } else if (type === 'used') {
+      icon.textContent  = '⚠️';
+      title.textContent = 'Tiquete ya usado';
+      sub.textContent   = 'Este QR ya fue escaneado anteriormente';
+      flashScreen('red');
+      vibrate([200, 100, 200, 100, 200]);
+    } else {
+      icon.textContent  = '❌';
+      title.textContent = 'QR no válido';
+      sub.textContent   = 'Este código no corresponde al evento';
+      flashScreen('red');
+      vibrate([300]);
+    }
+
+    if (data && type !== 'invalid') {
+      const nombre   = data.nombre   || 'N/A';
+      const correo   = data.correo   || '—';
+      const id       = data.id       || '—';
+      const hora     = new Date().toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' });
+
+      body.innerHTML = `
+        <div class="info-row">
+          <span class="info-label">Nombre</span>
+          <span class="info-value">${nombre}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Correo</span>
+          <span class="info-value">${correo || '—'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ID Tiquete</span>
+          <span class="info-value mono">YOGA-${id}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Hora de entrada</span>
+          <span class="info-value mono">${hora}</span>
+        </div>
+      `;
+    } else {
+      body.innerHTML = `
+        <div class="info-row">
+          <span class="info-label">Detalle</span>
+          <span class="info-value" style="color:var(--red)">QR no reconocido</span>
+        </div>
+      `;
+    }
+  }
+
+  function nextScan() {
+    resultW.classList.remove('visible');
+    startScan();
+  }
+
+  function addHistory(data, type) {
+    const nombre = data ? (data.nombre || 'Desconocido') : 'QR inválido';
+    const hora   = new Date().toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const label  = type === 'valid' ? 'Entrada aprobada' : type === 'used' ? 'Ya escaneado' : 'QR inválido';
+
+    history.unshift({ nombre, hora, type, label });
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!history.length) {
+      list.innerHTML = '<div class="empty-history">Aún no hay escaneos registrados</div>';
+      return;
+    }
+    list.innerHTML = history.slice(0, 20).map(h => `
+      <div class="history-item">
+        <div class="history-dot ${h.type}"></div>
+        <div class="history-info">
+          <div class="history-name">${h.nombre}</div>
+          <div class="history-meta">${h.label}</div>
+        </div>
+        <div class="history-time">${h.hora}</div>
+      </div>
+    `).join('');
+  }
+
+  function updateCounter() {
+    document.getElementById('counter').textContent = totalCount + ' escaneados';
+  }
+
+  function flashScreen(color) {
+    flash.className = 'flash ' + color + ' show';
+    setTimeout(() => flash.classList.remove('show'), 300);
+  }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+</script>
+</body>
+</html>
