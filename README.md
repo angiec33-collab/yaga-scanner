@@ -1,2 +1,2 @@
-# yoya-scanner
+# yoga-scanner
 Good Vibes Reset
